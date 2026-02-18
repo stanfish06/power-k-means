@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 3.23)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 project(power-k-means)
 cmake_policy(SET CMP0167 NEW)
 find_package(Boost REQUIRED)
