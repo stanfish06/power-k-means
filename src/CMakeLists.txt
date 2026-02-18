@@ -3,3 +3,4 @@ target_sources(main
     PRIVATE
         main.cpp
 )
+target_link_libraries(main Boost::headers)
