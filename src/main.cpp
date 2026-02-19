@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <boost/format.hpp>
+#include <boost/numeric/ublas/io.hpp>
 #include <boost/numeric/ublas/matrix.hpp>
 #include <boost/numeric/ublas/matrix_proxy.hpp>
 #include <boost/numeric/ublas/vector.hpp>
@@ -32,6 +33,8 @@ Result power_kmeans(matrix<double> X, int k, double s0, double eta, double atol,
     matrix_row<matrix<double>> obs_i(X, oi);
     matrix_row<matrix<double>> centroid_i(centroids, ki);
     centroid_i = obs_i;
+    for (int j = 0; j < centroids.size2(); j++)
+      centroid_i(j) += std::normal_distribution<double>(0.0, 1e-3)(rng);
   }
   matrix<double> weights(n_obs, k);
   matrix<double> membership(n_obs, k);
@@ -41,6 +44,7 @@ Result power_kmeans(matrix<double> X, int k, double s0, double eta, double atol,
   auto start = std::chrono::high_resolution_clock::now();
   int i;
   for (i = 0; i < max_iters; i++) {
+    std::cout << "[DEBUG] Centroids: " << centroids << std::endl;
     std::cout << boost::format("[INFO] Start iteration %1% with power %2%") %
                      i % s
               << std::endl;
@@ -58,12 +62,16 @@ Result power_kmeans(matrix<double> X, int k, double s0, double eta, double atol,
       }
       double _a = pow(sum(power_dists_i), 1 / s - 1);
       vector<double> _b = element_div(power_dists_i, dists_i);
-      _b *= _a;
       matrix_row<matrix<double>> _row_weights(weights, oi);
       matrix_row<matrix<double>> _row_membership(membership, oi);
-      _row_weights = _b;
       _row_membership = _b / sum(_b);
+      std::cout << "[DEBUG] _a: " << _a << std::endl;
+      std::cout << "[DEBUG] _b: " << _b << std::endl;
+      _b *= _a;
+      std::cout << "[DEBUG] _b: " << _b << std::endl;
+      _row_weights = _b;
     }
+    std::cout << "[DEBUG] Weights: " << weights << std::endl;
     auto end_wei = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(
         end_wei - start_wei);
@@ -78,6 +86,8 @@ Result power_kmeans(matrix<double> X, int k, double s0, double eta, double atol,
       centroids_tot_chg_abs += norm_1(_new_centroid_i - _old_centroid_i);
       _old_centroid_i = _new_centroid_i;
     }
+    std::cout << "[INFO] Absolute centroids change: " << centroids_tot_chg_abs
+              << std::endl;
     if (centroids_tot_chg_abs < atol) {
       std::cout << "[INFO] Weights computation finished in: "
                 << duration.count() << " ms" << std::endl;
@@ -88,7 +98,7 @@ Result power_kmeans(matrix<double> X, int k, double s0, double eta, double atol,
   }
   auto end = std::chrono::high_resolution_clock::now();
   auto duration = std::chrono::duration_cast<std::chrono::seconds>(end - start);
-  if (status) {
+  if (status == 0) {
     std::cout << boost::format(
                      "[EXIT] Failed to converge after %1% "
                      "iterations. (Elapsed in %2%s; Final power %3%)") %
@@ -104,4 +114,12 @@ Result power_kmeans(matrix<double> X, int k, double s0, double eta, double atol,
   return {membership, centroids, status == 1};
 }
 
-int main() { std::cout << "hello" << std::endl; }
+int main() {
+  matrix<double> M(4, 3);
+  double data[] = {1.2, 3.4, 5.6, 7.8, 9.0, 1.1, 2.2, 3.3, 4.4, 5.5, 6.6, 7.7};
+  for (int i = 0; i < 4; i++)
+    for (int j = 0; j < 3; j++)
+      M(i, j) = data[i * 3 + j];
+  // s=-1 correspond to harmonic mean
+  auto res = power_kmeans(M, 3, -1, 1.5, 0.01, 10, 1);
+}
