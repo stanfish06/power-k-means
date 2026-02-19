@@ -8,16 +8,25 @@
 #include <iostream>
 
 using namespace boost::numeric::ublas;
-void power_kmeans(matrix<double> X, int k, double s0, double eta, double atol,
-                  int max_iters, int seed) {
+struct Result {
+  matrix<double> membership;
+  matrix<double> centroids;
+  bool converged;
+};
+Result power_kmeans(matrix<double> X, int k, double s0, double eta, double atol,
+                    int max_iters, int seed) {
   int n_obs = X.size1();
   int n_feats = X.size2();
-  matrix<double> centroids(k, n_feats); // need initialization
+  matrix<double> centroids(
+      k, n_feats); // need initialization matrix<double> weights(n_obs, k);
   matrix<double> weights(n_obs, k);
+  matrix<double> membership(n_obs, k);
   double s = s0;
+  int status = 0;
 
   auto start = std::chrono::high_resolution_clock::now();
-  for (int i = 0; i < max_iters; i++) {
+  int i;
+  for (i = 0; i < max_iters; i++) {
     std::cout << boost::format("[INFO] Start iteration %1% with power %2%") %
                      i % s
               << std::endl;
@@ -36,8 +45,10 @@ void power_kmeans(matrix<double> X, int k, double s0, double eta, double atol,
       double _a = pow(sum(power_dists_i), 1 / s - 1);
       vector<double> _b = element_div(power_dists_i, dists_i);
       _b *= _a;
-      matrix_row<matrix<double>> _row(weights, oi);
-      _row = _b;
+      matrix_row<matrix<double>> _row_weights(weights, oi);
+      matrix_row<matrix<double>> _row_membership(membership, oi);
+      _row_weights = _b;
+      _row_membership = _b / sum(_b);
     }
     auto end_wei = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(
@@ -51,17 +62,32 @@ void power_kmeans(matrix<double> X, int k, double s0, double eta, double atol,
       vector<double> _new_centroid_i = prod(weights_ki, X) / sum(weights_ki);
       matrix_row<matrix<double>> _old_centroid_i(centroids, ki);
       centroids_tot_chg_abs += norm_1(_new_centroid_i - _old_centroid_i);
+      _old_centroid_i = _new_centroid_i;
     }
     if (centroids_tot_chg_abs < atol) {
-      std::cout << "[SUCCESS] Weights computation finished in: "
+      std::cout << "[INFO] Weights computation finished in: "
                 << duration.count() << " ms" << std::endl;
+      status = 1;
       break;
     }
+    s *= eta;
   }
   auto end = std::chrono::high_resolution_clock::now();
   auto duration = std::chrono::duration_cast<std::chrono::seconds>(end - start);
-  std::cout << "[SUCCESS] Finished in: " << duration.count() << "s"
-            << std::endl;
+  if (status) {
+    std::cout << boost::format(
+                     "[EXIT] Failed to converge after %1% "
+                     "iterations. (Elapsed in %2%s; Final power %3%)") %
+                     max_iters % duration.count() % s
+              << std::endl;
+  } else if (status == 1) {
+    std::cout << boost::format(
+                     "[EXIT] Converge after %1% "
+                     "iterations. (Elapsed in %2%s; Final power %3%)") %
+                     (i + 1) % duration.count() % s
+              << std::endl;
+  }
+  return {membership, centroids, status == 1};
 }
 
 int main() { std::cout << "hello" << std::endl; }
