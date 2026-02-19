@@ -6,6 +6,7 @@
 #include <boost/numeric/ublas/vector_expression.hpp>
 #include <chrono>
 #include <iostream>
+#include <random>
 
 using namespace boost::numeric::ublas;
 struct Result {
@@ -19,6 +20,19 @@ Result power_kmeans(matrix<double> X, int k, double s0, double eta, double atol,
   int n_feats = X.size2();
   matrix<double> centroids(
       k, n_feats); // need initialization matrix<double> weights(n_obs, k);
+  vector<int> idx(n_obs);
+  std::iota(idx.begin(), idx.end(), 0);
+  std::mt19937 rng(seed);
+  for (int ki = 0; ki < k; ki++) {
+    int oi = std::uniform_int_distribution<int>(ki, n_obs - 1)(rng);
+    std::swap(idx[ki], idx[oi]);
+  }
+  for (int ki = 0; ki < k; ki++) {
+    int oi = idx[ki];
+    matrix_row<matrix<double>> obs_i(X, oi);
+    matrix_row<matrix<double>> centroid_i(centroids, ki);
+    centroid_i = obs_i;
+  }
   matrix<double> weights(n_obs, k);
   matrix<double> membership(n_obs, k);
   double s = s0;
