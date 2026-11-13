@@ -1,0 +1,66 @@
+[build-system]
+requires = ["scikit-build-core>=0.11", "cython>=3.1"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "power-k-means"
+version = "0.1.0"
+description = "Power k-means clustering (Xu & Lange, ICML 2019) in C++ with a Cython binding"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["numpy>=1.23"]
+classifiers = [
+  "Programming Language :: C++",
+  "Programming Language :: Cython",
+  "Programming Language :: Python :: 3",
+  "Topic :: Scientific/Engineering",
+]
+
+[project.urls]
+Repository = "https://github.com/stanfish06/power-k-means"
+Paper = "https://proceedings.mlr.press/v97/xu19a.html"
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[tool.scikit-build]
+minimum-version = "build-system.requires"
+cmake.build-type = "Release"
+wheel.packages = ["python/power_kmeans"]
+wheel.exclude = ["**.pyx"]
+sdist.exclude = ["verify", "build", ".github", ".ruff_cache", "lefthook.yml", "CMakeUserPresets.json"]
+
+[tool.uv]
+# persistent build dir for local uv builds only, so rebuilds reuse the fetched
+# Boost archive; pip and cibuildwheel use a fresh temporary dir, which a cache
+# from another checkout path would break
+config-settings = { "build-dir" = "build/py-{wheel_tag}" }
+# rebuild the extension when C++/Cython sources change
+cache-keys = [
+  { file = "pyproject.toml" },
+  { file = "CMakeLists.txt" },
+  { file = "src/**" },
+  { file = "include/**" },
+  { file = "python/**" },
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = ["-ra"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "NPY"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["power_kmeans"]
+
+[tool.cibuildwheel]
+build = "cp310-* cp311-* cp312-* cp313-* cp314-*"
+# free-threaded builds skipped: the extension is not declared thread-safe for them
+skip = "cp3??t-* *_i686 *-win32"
+test-groups = ["dev"]
+test-command = "pytest {project}/tests"

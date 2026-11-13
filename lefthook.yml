@@ -1,0 +1,16 @@
+# Pre-commit format and lint on staged files. Install once with: lefthook install
+pre-commit:
+  parallel: true
+  commands:
+    ruff-format:
+      glob: "*.{py,pyi}"
+      run: ruff format {staged_files}
+      stage_fixed: true
+    ruff-check:
+      glob: "*.{py,pyi}"
+      run: ruff check --fix {staged_files}
+      stage_fixed: true
+    clang-format:
+      glob: "*.{cpp,hpp}"
+      run: clang-format -i {staged_files}
+      stage_fixed: true
