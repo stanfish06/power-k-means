@@ -5,11 +5,8 @@ target_link_libraries(power_kmeans_core PUBLIC Boost::headers)
 # PIC so the static library can be linked into the Python extension module
 set_target_properties(power_kmeans_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
-# demo and reference CLI are not part of the wheel
+# the demo is not part of the wheel
 if(NOT SKBUILD)
   add_executable(main main.cpp)
   target_link_libraries(main PRIVATE power_kmeans_core)
-
-  add_executable(pkm_reference reference.cpp)
-  target_link_libraries(pkm_reference PRIVATE power_kmeans_core)
 endif()
